@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Tracker | Spring Boot + JavaScript</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+        
+        .priority-high {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .priority-medium {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .priority-low {
+            border-left: 4px solid #10b981;
+        }
+        
+        .completed-task {
+            background-color: #f3f4f6;
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        
+        /* Animation for task addition/removal */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .task-animation {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-tasks mr-3 text-indigo-600"></i>
+                Task Tracker
+            </h1>
+            <p class="text-gray-600 mt-2">Manage your tasks efficiently with</p>
+        </header>
+        
+        <!-- Add Task Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Add New Task</h2>
+            <form id="taskForm" class="space-y-4">
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                    <input type="text" id="title" name="title" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                           placeholder="What needs to be done?" required>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                        <input type="date" id="dueDate" name="dueDate" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <div>
+                        <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select id="priority" name="priority" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="description" name="description" rows="3" 
+                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                              placeholder="Additional details..."></textarea>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">
+                        <i class="fas fa-plus mr-2"></i> Add Task
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Task Filters -->
+        <div class="flex flex-wrap items-center justify-between mb-6">
+            <div class="flex space-x-2 mb-4 md:mb-0">
+                <button id="filterAll" class="filter-btn active px-4 py-2 bg-indigo-600 text-white rounded-md">
+                    All Tasks
+                </button>
+                <button id="filterActive" class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    Active
+                </button>
+                <button id="filterCompleted" class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    Completed
+                </button>
+            </div>
+            
+            <div class="relative">
+                <select id="sortTasks" class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="date-asc">Sort by: Date (Oldest)</option>
+                    <option value="date-desc" selected>Sort by: Date (Newest)</option>
+                    <option value="priority">Sort by: Priority</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Task Statistics -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div class="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                    <p class="text-sm text-blue-600 font-medium">Total Tasks</p>
+                    <p id="totalTasks" class="text-2xl font-bold text-blue-800">0</p>
+                </div>
+                <div class="p-3 rounded-lg bg-green-50 border border-green-100">
+                    <p class="text-sm text-green-600 font-medium">Completed</p>
+                    <p id="completedTasks" class="text-2xl font-bold text-green-800">0</p>
+                </div>
+                <div class="p-3 rounded-lg bg-red-50 border border-red-100">
+                    <p class="text-sm text-red-600 font-medium">Pending</p>
+                    <p id="pendingTasks" class="text-2xl font-bold text-red-800">0</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Task List -->
+        <div id="taskList" class="space-y-3">
+            <!-- Tasks will be dynamically inserted here -->
+            <div class="text-center py-10 text-gray-500">
+                <i class="fas fa-tasks text-4xl mb-3 opacity-30"></i>
+                <p>No tasks found. Add your first task above!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800">Edit Task</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form id="editForm" class="space-y-4">
+                    <input type="hidden" id="editId">
+                    <div>
+                        <label for="editTitle" class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                        <input type="text" id="editTitle" name="editTitle" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="editDueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                            <input type="date" id="editDueDate" name="editDueDate" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        
+                        <div>
+                            <label for="editPriority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                            <select id="editPriority" name="editPriority" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="editDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea id="editDescription" name="editDescription" rows="3" 
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-between pt-4">
+                        <button type="button" id="deleteTask" 
+                                class="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <i class="fas fa-trash mr-2"></i> Delete
+                        </button>
+                        <div class="space-x-3">
+                            <button type="button" id="cancelEdit" 
+                                    class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <i class="fas fa-save mr-2"></i> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data - Replace with actual API calls to your Spring Boot backend
+        let tasks = [];
+        let currentFilter = 'all';
+        let currentSort = 'date-desc';
+        
+        // DOM Elements
+        const taskForm = document.getElementById('taskForm');
+        const taskList = document.getElementById('taskList');
+        const editModal = document.getElementById('editModal');
+        const editForm = document.getElementById('editForm');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const sortSelect = document.getElementById('sortTasks');
+        const statsTotal = document.getElementById('totalTasks');
+        const statsCompleted = document.getElementById('completedTasks');
+        const statsPending = document.getElementById('pendingTasks');
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load tasks from backend (simulated here)
+            fetchTasks();
+            
+            // Event listeners
+            taskForm.addEventListener('submit', handleAddTask);
+            filterButtons.forEach(btn => btn.addEventListener('click', handleFilterChange));
+            sortSelect.addEventListener('change', handleSortChange);
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('cancelEdit').addEventListener('click', closeModal);
+            editForm.addEventListener('submit', handleEditTask);
+            document.getElementById('deleteTask').addEventListener('click', handleDeleteTask);
+        });
+        
+        // Simulate fetching tasks from backend
+        function fetchTasks() {
+            // In a real app, this would be an API call to your Spring Boot backend
+            // Example:
+            // fetch('/api/tasks')
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         tasks = data;
+            //         renderTasks();
+            //     });
+            
+            // For demo purposes, we'll use sample data
+            tasks = [
+                {
+                    id: 1,
+                    title: 'Complete project proposal',
+                    description: 'Finish writing the project proposal document and send for review',
+                    dueDate: '2023-06-15',
+                    priority: 'high',
+                    completed: false,
+                    createdAt: '2023-06-10T09:30:00'
+                },
+                {
+                    id: 2,
+                    title: 'Buy groceries',
+                    description: 'Milk, eggs, bread, fruits',
+                    dueDate: '2023-06-12',
+                    priority: 'medium',
+                    completed: true,
+                    createdAt: '2023-06-08T16:45:00'
+                },
+                {
+                    id: 3,
+                    title: 'Schedule team meeting',
+                    description: 'Discuss project progress with the team',
+                    dueDate: '2023-06-14',
+                    priority: 'low',
+                    completed: false,
+                    createdAt: '2023-06-09T11:20:00'
+                }
+            ];
+            
+            renderTasks();
+        }
+        
+        // Render tasks based on current filter and sort
+        function renderTasks() {
+            // Filter tasks
+            let filteredTasks = [];
+            if (currentFilter === 'all') {
+                filteredTasks = [...tasks];
+            } else if (currentFilter === 'active') {
+                filteredTasks = tasks.filter(task => !task.completed);
+            } else if (currentFilter === 'completed') {
+                filteredTasks = tasks.filter(task => task.completed);
+            }
+            
+            // Sort tasks
+            filteredTasks.sort((a, b) => {
+                if (currentSort === 'date-asc') {
+                    return new Date(a.createdAt) - new Date(b.createdAt);
+                } else if (currentSort === 'date-desc') {
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                } else if (currentSort === 'priority') {
+                    const priorityOrder = { high: 3, medium: 2, low: 1 };
+                    return priorityOrder[b.priority] - priorityOrder[a.priority];
+                }
+                return 0;
+            });
+            
+            // Update statistics
+            updateStatistics();
+            
+            // Clear task list
+            taskList.innerHTML = '';
+            
+            if (filteredTasks.length === 0) {
+                taskList.innerHTML = `
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fas fa-tasks text-4xl mb-3 opacity-30"></i>
+                        <p>No tasks found. Add your first task above!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Render each task
+            filteredTasks.forEach((task, index) => {
+                const taskElement = createTaskElement(task);
+                taskList.appendChild(taskElement);
+            });
+        }
+        
+        // Create a task element
+        function createTaskElement(task) {
+            const taskElement = document.createElement('div');
+            taskElement.className = `task-item bg-white rounded-lg shadow-sm p-4 border-l-4 priority-${task.priority} ${task.completed ? 'completed-task' : ''} task-animation`;
+            taskElement.dataset.id = task.id;
+            
+            // Format due date
+            const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date';
+            const priorityColors = {
+                high: 'bg-red-100 text-red-800',
+                medium: 'bg-yellow-100 text-yellow-800',
+                low: 'bg-green-100 text-green-800'
+            };
+            
+            taskElement.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex items-start space-x-3 flex-1">
+                        <button class="complete-btn mt-1" data-id="${task.id}">
+                            <i class="fas fa-${task.completed ? 'check-circle text-green-500' : 'circle text-gray-300'}"></i>
+                        </button>
+                        <div class="flex-1">
+                            <h3 class="font-medium text-gray-800">${task.title}</h3>
+                            ${task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : ''}
+                            <div class="flex flex-wrap items-center mt-2 space-x-3 text-sm">
+                                <span class="px-2 py-1 rounded-full ${priorityColors[task.priority]}">
+                                    ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                </span>
+                                <span class="text-gray-500">
+                                    <i class="far fa-calendar-alt mr-1"></i> ${dueDate}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-actions opacity-0 transition-opacity duration-200 flex space-x-2">
+                        <button class="edit-btn p-2 text-gray-500 hover:text-indigo-600" data-id="${task.id}">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                        <button class="delete-btn p-2 text-gray-500 hover:text-red-600" data-id="${task.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners to the buttons
+            taskElement.querySelector('.complete-btn').addEventListener('click', () => toggleTaskComplete(task.id));
+            taskElement.querySelector('.edit-btn').addEventListener('click', () => openEditModal(task.id));
+            taskElement.querySelector('.delete-btn').addEventListener('click', () => confirmDeleteTask(task.id));
+            
+            return taskElement;
+        }
+        
+        // Update statistics
+        function updateStatistics() {
+            statsTotal.textContent = tasks.length;
+            statsCompleted.textContent = tasks.filter(task => task.completed).length;
+            statsPending.textContent = tasks.filter(task => !task.completed).length;
+        }
+        
+        // Handle adding a new task
+        function handleAddTask(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const dueDate = document.getElementById('dueDate').value;
+            const priority = document.getElementById('priority').value;
+            
+            // In a real app, this would be an API call to your Spring Boot backend
+            // Example:
+            // fetch('/api/tasks', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ title, description, dueDate, priority })
+            // })
+            // .then(response => response.json())
+            // .then(newTask => {
+            //     tasks.unshift(newTask);
+            //     renderTasks();
+            //     taskForm.reset();
+            // });
+            
+            // For demo purposes, we'll create a task locally
+            const newTask = {
+                id: Date.now(), // Temporary ID
+                title,
+                description,
+                dueDate,
+                priority,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            tasks.unshift(newTask);
+            renderTasks();
+            taskForm.reset();
+            
+            // Show success message
+            showToast('Task added successfully!', 'success');
+        }
+        
+        // Toggle task completion status
+        function toggleTaskComplete(taskId) {
+            // In a real app, this would be an API call to your Spring Boot backend
+            // Example:
+            // fetch(`/api/tasks/${taskId}/toggle`, { method: 'PATCH' })
+            //     .then(response => response.json())
+            //     .then(updatedTask => {
+            //         const index = tasks.findIndex(t => t.id === taskId);
+            //         tasks[index] = updatedTask;
+            //         renderTasks();
+            //     });
+            
+            // For demo purposes, we'll update locally
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                renderTasks();
+                
+                const message = task.completed ? 'Task marked as complete!' : 'Task marked as active';
+                showToast(message, 'info');
+            }
+        }
+        
+        // Open edit modal
+        function openEditModal(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                document.getElementById('editId').value = task.id;
+                document.getElementById('editTitle').value = task.title;
+                document.getElementById('editDescription').value = task.description || '';
+                document.getElementById('editDueDate').value = task.dueDate || '';
+                document.getElementById('editPriority').value = task.priority;
+                
+                editModal.classList.remove('hidden');
+            }
+        }
+        
+        // Close edit modal
+        function closeModal() {
+            editModal.classList.add('hidden');
+        }
+        
+        // Handle editing a task
+        function handleEditTask(e) {
+            e.preventDefault();
+            
+            const taskId = parseInt(document.getElementById('editId').value);
+            const title = document.getElementById('editTitle').value;
+            const description = document.getElementById('editDescription').value;
+            const dueDate = document.getElementById('editDueDate').value;
+            const priority = document.getElementById('editPriority').value;
+            
+            // In a real app, this would be an API call to your Spring Boot backend
+            // Example:
+            // fetch(`/api/tasks/${taskId}`, {
+            //     method: 'PUT',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ title, description, dueDate, priority })
+            // })
+            // .then(response => response.json())
+            // .then(updatedTask => {
+            //     const index = tasks.findIndex(t => t.id === taskId);
+            //     tasks[index] = updatedTask;
+            //     renderTasks();
+            //     closeModal();
+            // });
+            
+            // For demo purposes, we'll update locally
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.title = title;
+                task.description = description;
+                task.dueDate = dueDate;
+                task.priority = priority;
+                
+                renderTasks();
+                closeModal();
+                
+                // Show success message
+                showToast('Task updated successfully!', 'success');
+            }
+        }
+        
+        // Confirm task deletion
+        function confirmDeleteTask(taskId) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                handleDeleteTask(taskId);
+            }
+        }
+        
+        // Handle deleting a task
+        function handleDeleteTask(taskId) {
+            if (typeof taskId !== 'number') {
+                taskId = parseInt(document.getElementById('editId').value);
+            }
+            
+            // In a real app, this would be an API call to your Spring Boot backend
+            // Example:
+            // fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
+            //     .then(() => {
+            //         tasks = tasks.filter(t => t.id !== taskId);
+            //         renderTasks();
+            //         closeModal();
+            //     });
+            
+            // For demo purposes, we'll delete locally
+            tasks = tasks.filter(t => t.id !== taskId);
+            renderTasks();
+            closeModal();
+            
+            // Show success message
+            showToast('Task deleted successfully!', 'warning');
+        }
+        
+        // Handle filter changes
+        function handleFilterChange(e) {
+            // Update active button
+            filterButtons.forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            });
+            
+            e.target.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            e.target.classList.add('bg-indigo-600', 'text-white');
+            
+            // Update current filter
+            if (e.target.id === 'filterAll') {
+                currentFilter = 'all';
+            } else if (e.target.id === 'filterActive') {
+                currentFilter = 'active';
+            } else if (e.target.id === 'filterCompleted') {
+                currentFilter = 'completed';
+            }
+            
+            renderTasks();
+        }
+        
+        // Handle sort changes
+        function handleSortChange(e) {
+            currentSort = e.target.value;
+            renderTasks();
+        }
+        
+        // Show toast notification
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-green-100 border-green-200 text-green-800',
+                error: 'bg-red-100 border-red-200 text-red-800',
+                warning: 'bg-yellow-100 border-yellow-200 text-yellow-800',
+                info: 'bg-blue-100 border-blue-200 text-blue-800'
+            };
+            
+            toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded-md border ${colors[type]} shadow-md flex items-center animate-fadeIn`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} mr-2"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('animate-fadeIn');
+                toast.classList.add('animate-fadeOut');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
